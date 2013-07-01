@@ -260,12 +260,26 @@ class Statsd
 
   private
 
+  ILLEGAL_STAT_CHARS = /[:@]/
+  EMPTY_STRING = ''
+  COLON = ':'
+  PIPE = '|'
+
   def send_stats(stat, delta, type, sample_rate=1)
     if sample_rate == 1 or rand < sample_rate
-      # Replace Ruby module scoping with '.' and reserved chars (: | @) with underscores.
-      stat = stat.to_s.gsub('::', '.').tr(':|@', '_')
-      rate = "|@#{sample_rate}" unless sample_rate == 1
-      send_to_socket "#{prefix}#{stat}#{postfix}:#{delta}|#{type}#{rate}"
+      raise "stat cannot contain ':' or '@' characters" if stat.match(ILLEGAL_STAT_CHARS)
+
+      body = ''
+      body << (prefix.nil? ? EMPTY_STRING : prefix.to_s)
+      body << (stat.nil? ? EMPTY_STRING : stat.to_s)
+      body << (postfix.nil? ? EMPTY_STRING : postfix.to_s)
+      body << COLON
+      body << (delta.nil? ? EMPTY_STRING : delta.to_s)
+      body << PIPE
+      body << (type.nil? ? EMPTY_STRING : type.to_s)
+      body << "|@#{sample_rate}" unless sample_rate == 1
+
+      send_to_socket body
     end
   end
 
